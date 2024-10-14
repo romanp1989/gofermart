@@ -16,14 +16,15 @@ create table if not exists orders
         constraint orders_pk
             primary key,
     created_at timestamp with time zone default now() not null,
-    number     varchar(100)                           not null
-        constraint orders_number_udx
-            unique,
+    number     varchar(100)                           not null,
     status     varchar(20) not null,
     user_id    bigint
         constraint orders_user_id_idx
             references users
 );
+
+create unique index if not exists orders_number_udx
+    on orders (number);
 
 create table if not exists balance
 (

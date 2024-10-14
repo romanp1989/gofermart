@@ -35,6 +35,9 @@ func (s *Service) CreateOrder(ctx context.Context, orderNumber string, userID do
 	if err != nil && !errors.Is(err, ErrNotFoundOrder) {
 		return nil, err
 	}
+	if err == nil {
+		return nil, ErrIssetOrder
+	}
 
 	order := &domain.Order{
 		ID:        0,
