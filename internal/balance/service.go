@@ -2,6 +2,7 @@ package balance
 
 import (
 	"context"
+	"errors"
 	"github.com/romanp1989/gophermart/internal/domain"
 	"github.com/romanp1989/gophermart/internal/order"
 	"go.uber.org/zap"
@@ -54,7 +55,7 @@ func (s *Service) LoadSum(ctx context.Context, userID domain.UserID) (*domain.Us
 
 func (s *Service) Withdraw(ctx context.Context, userID *domain.UserID, orderNumber string, sum float64) (*domain.Balance, error) {
 	err := s.validator.Validate(ctx, orderNumber, *userID)
-	if err != nil {
+	if err != nil && !errors.Is(err, order.ErrNotFoundOrder) {
 		return nil, err
 	}
 
