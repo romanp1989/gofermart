@@ -20,7 +20,7 @@ func (m *Middlewares) AuthMiddleware(h http.HandlerFunc) http.HandlerFunc {
 
 		cookie, err := r.Cookie("Token")
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 

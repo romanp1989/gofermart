@@ -39,7 +39,7 @@ func (h *Handler) CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := cookies.UIDFromContext(r.Context())
 	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
