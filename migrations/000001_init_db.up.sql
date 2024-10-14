@@ -1,4 +1,4 @@
-create table public.users
+create table if not exists users
 (
     id       bigserial
         constraint users_pk
@@ -7,10 +7,10 @@ create table public.users
     password varchar(255) not null
 );
 
-create unique index users_login_udx
-    on public.users (login, login);
+create unique index if not exists users_login_udx
+    on users (login, login);
 
-create table public.orders
+create table if not exists orders
 (
     id         bigserial
         constraint orders_pk
@@ -19,13 +19,13 @@ create table public.orders
     number     varchar(100)                           not null
         constraint orders_number_udx
             unique,
-    status     integer,
+    status     varchar(20) not null,
     user_id    bigint
         constraint orders_user_id_idx
-            references public.users
+            references users
 );
 
-create table public.balance
+create table if not exists balance
 (
     id           bigserial
         constraint balance_pk
@@ -39,5 +39,5 @@ create table public.balance
     type         smallint                 not null
 );
 
-create index balance_user_id_idx
-    on public.balance (user_id);
+create index if not exists balance_user_id_idx
+    on balance (user_id);

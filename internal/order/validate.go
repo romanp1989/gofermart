@@ -34,10 +34,6 @@ func (v *Validator) Validate(ctx context.Context, number string, userID domain.U
 
 	order, err := v.orderStorage.LoadOrder(ctx, number)
 	if err != nil {
-		if errors.Is(err, ErrNotFoundOrder) {
-			return nil
-		}
-
 		return err
 	}
 

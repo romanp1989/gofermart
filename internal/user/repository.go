@@ -41,9 +41,9 @@ func (d *DBStorage) CreateUser(ctx context.Context, user domain.User) (*domain.U
 }
 
 func (d *DBStorage) FindByLogin(ctx context.Context, login string) (*domain.User, error) {
-	var foundUser *domain.User
+	foundUser := &domain.User{}
 
-	searchUserQuery := "SELECT id, login, password FROM users WHERE login = $1"
+	searchUserQuery := `SELECT id, login, password FROM users WHERE login = $1;`
 	row := d.db.QueryRowContext(ctx, searchUserQuery, login)
 	if err := row.Scan(&foundUser.ID, &foundUser.Login, &foundUser.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -125,7 +125,7 @@ func (d *DBStorage) Withdraw(ctx context.Context, userID *domain.UserID, orderNu
 func (d *DBStorage) GetUserWithdrawals(ctx context.Context, userID domain.UserID) ([]*domain.Balance, error) {
 	rows, err := d.db.QueryContext(
 		ctx,
-		`SELECT * 
+		`SELECT id, created_at, order_number, user_id, sum, type
 			FROM balance b 
 			WHERE b.user_id = $1 AND b.type = $2 
 			ORDER BY b.created_at DESC;`,
@@ -143,7 +143,7 @@ func (d *DBStorage) GetUserWithdrawals(ctx context.Context, userID domain.UserID
 		balance := &domain.Balance{}
 		var sum float64
 
-		err = rows.Scan(&balance.ID, &balance.OrderNumber, &sum, &balance.Type, &balance.CreatedAt, &balance.UserID)
+		err = rows.Scan(&balance.ID, &balance.CreatedAt, &balance.OrderNumber, &balance.UserID, &sum, &balance.Type)
 		if err != nil {
 			return nil, err
 		}

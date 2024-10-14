@@ -13,6 +13,7 @@ import (
 type accrualStorage interface {
 	GetNewOrdersToSend() ([]domain.Order, error)
 	UpdateOrder(order *domain.AccrualResponse, userID domain.UserID) error
+	Update(order domain.Order) error
 	AddBalance(o *domain.Balance) error
 }
 
@@ -37,6 +38,17 @@ func (s *Service) OrderStatusChecker() {
 			continue
 		}
 
+		defer func() {
+			if len(newOrders) > 0 {
+				for _, o := range newOrders {
+					o.Status = domain.OrderStatusNew
+					if err = s.storage.Update(o); err != nil {
+						s.log.With(zap.Error(err)).Error("ошибка обновления статуса заказа")
+					}
+				}
+			}
+		}()
+
 		for _, order := range newOrders {
 			accrualResp, err := s.UploadWithdrawalFromAccrual(order.Number)
 			if len(accrualResp.Order) != 0 || err == nil {
@@ -60,16 +72,17 @@ func (s *Service) OrderStatusChecker() {
 func (s *Service) UploadWithdrawalFromAccrual(orderNumber string) (*domain.AccrualResponse, error) {
 	var (
 		accrualResp *domain.AccrualResponse
-		response    *http.Response
+		resp        *http.Response
+		err         error
 	)
 
 	for {
-		response, err := http.Get(config.Options.FlagAccrualAddress + "/api/orders/" + orderNumber)
-		if err != nil || response.StatusCode == http.StatusTooManyRequests ||
-			response.StatusCode == http.StatusNoContent {
+		host := config.Options.FlagAccrualAddress + "/api/orders/" + orderNumber
+		resp, err = http.Get(host)
+		if err != nil || resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNoContent {
 
-			if response != nil && response.Body != nil {
-				response.Body.Close()
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
 			}
 
 			time.Sleep(5 * time.Second)
@@ -79,13 +92,7 @@ func (s *Service) UploadWithdrawalFromAccrual(orderNumber string) (*domain.Accru
 		break
 	}
 
-	defer func() {
-		if response.Body != nil {
-			response.Body.Close()
-		}
-	}()
-
-	body, err := io.ReadAll(response.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/romanp1989/gophermart/internal/balance"
 	"github.com/romanp1989/gophermart/internal/cookies"
 	"github.com/romanp1989/gophermart/internal/domain"
+	"github.com/romanp1989/gophermart/internal/order"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -104,6 +105,9 @@ func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if errors.Is(err, domain.ErrBalanceInsufficientFunds) {
 			w.WriteHeader(http.StatusPaymentRequired)
+			return
+		} else if errors.Is(err, order.ErrNotFoundOrder) {
+			w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 

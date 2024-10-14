@@ -2,16 +2,15 @@ package cookies
 
 import (
 	"context"
-	"github.com/gofrs/uuid"
 	"github.com/romanp1989/gophermart/internal/domain"
 )
 
 type ctxAuthKey string
 
-const AuthKey ctxAuthKey = "auth"
+const AuthKey ctxAuthKey = "Token"
 
-func Context(parent context.Context, uid uuid.UUID) context.Context {
-	return context.WithValue(parent, AuthKey, uid)
+func Context(parent context.Context, userID domain.UserID) context.Context {
+	return context.WithValue(parent, AuthKey, userID)
 }
 
 func UIDFromContext(ctx context.Context) (*domain.UserID, bool) {

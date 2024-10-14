@@ -3,6 +3,7 @@ package cookies
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/romanp1989/gophermart/internal/config"
 	"github.com/romanp1989/gophermart/internal/domain"
 	"net/http"
 )
@@ -56,4 +57,25 @@ func Validation(tokenString string, secretKey string) bool {
 		return false
 	}
 	return true
+}
+
+func GetUserID(tokenString string) (*domain.UserID, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims,
+		func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("неизвестный алгоритм подписи: %v", t.Header["alg"])
+			}
+			return []byte(config.Options.FlagSecretKey), nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, err
+	}
+
+	fmt.Println("токен валидный", claims.UserID)
+	return &claims.UserID, nil
 }

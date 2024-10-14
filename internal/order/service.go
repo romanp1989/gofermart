@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"errors"
 	"github.com/romanp1989/gophermart/internal/domain"
 	"go.uber.org/zap"
 	"sort"
@@ -13,7 +14,6 @@ type orderStorage interface {
 	CreateOrder(ctx context.Context, order *domain.Order) (int64, error)
 	LoadOrdersWithBalance(ctx context.Context, userID domain.UserID) ([]domain.OrderWithBalance, error)
 	LoadOrdersToProcess(ctx context.Context) ([]domain.Order, error)
-	Update(o domain.Order) error
 }
 
 type Service struct {
@@ -31,8 +31,8 @@ func NewService(orderStore orderStorage, validator *Validator, log *zap.Logger) 
 }
 
 func (s *Service) CreateOrder(ctx context.Context, orderNumber string, userID domain.UserID) (*domain.Order, error) {
-	err := s.validator.Validate(ctx, orderNumber, userID) //@TODO
-	if err != nil {
+	err := s.validator.Validate(ctx, orderNumber, userID)
+	if err != nil && !errors.Is(err, ErrNotFoundOrder) {
 		return nil, err
 	}
 

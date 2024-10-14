@@ -129,15 +129,3 @@ func (d *DBStorage) LoadOrdersToProcess(ctx context.Context) ([]domain.Order, er
 
 	return orders, nil
 }
-
-func (d *DBStorage) Update(o domain.Order) error {
-	_, err := d.db.Exec(`UPDATE orders 
-								SET status = $1 
-								WHERE id = $2;`, o.Status, o.ID)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

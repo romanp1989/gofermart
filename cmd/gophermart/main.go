@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/romanp1989/gophermart/cli/migrate"
 	accrualSer "github.com/romanp1989/gophermart/internal/accrual"
 	"github.com/romanp1989/gophermart/internal/api/balance"
 	"github.com/romanp1989/gophermart/internal/api/order"
@@ -9,6 +10,7 @@ import (
 	"github.com/romanp1989/gophermart/internal/config"
 	"github.com/romanp1989/gophermart/internal/database"
 	"github.com/romanp1989/gophermart/internal/logger"
+	middlewares2 "github.com/romanp1989/gophermart/internal/middlewares"
 	orderSer "github.com/romanp1989/gophermart/internal/order"
 	"github.com/romanp1989/gophermart/internal/server"
 	userSer "github.com/romanp1989/gophermart/internal/user"
@@ -33,6 +35,11 @@ func Init() int {
 		_ = zLog.Sync()
 	}(zapLogger)
 
+	err = config.ParseFlags()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	db, err := database.NewDB(&database.Config{
 		Dsn:             config.Options.FlagDBDsn,
 		MaxIdleConn:     1,
@@ -41,6 +48,16 @@ func Init() int {
 	})
 	if err != nil {
 		zapLogger.Fatal("Database init error: ", zap.String("error", err.Error()))
+	}
+
+	// Migrations
+	mCmd, err := migrate.NewMigrateCmd(&migrate.Config{Dsn: config.Options.FlagDBDsn})
+	if err != nil {
+		return 1
+	}
+
+	if err = mCmd.Up(); err != nil {
+		return 1
 	}
 
 	userRepository := userSer.NewDBStorage(db)
@@ -53,10 +70,11 @@ func Init() int {
 	orderHandler := order.NewOrderHandler(orderService, zapLogger)
 
 	balanceRepository := balanceSer.NewDBStorage(db)
-	balanceService := balanceSer.NewService(balanceRepository, zapLogger)
+	balanceService := balanceSer.NewService(balanceRepository, orderValidator, zapLogger)
 	balanceHandler := balance.NewBalanceHandler(balanceService, zapLogger)
 
-	route := server.NewRoutes(userHandler, orderHandler, balanceHandler)
+	middlewares := middlewares2.New(config.Options.FlagSecretKey)
+	route := server.NewRoutes(userHandler, orderHandler, balanceHandler, middlewares)
 	httpServer := server.NewApp(zapLogger, route)
 
 	errChannel := make(chan error, 1)

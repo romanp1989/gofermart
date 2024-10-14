@@ -18,11 +18,6 @@ type App struct {
 }
 
 func NewApp(log *zap.Logger, router *chi.Mux) *App {
-	err := config.ParseFlags()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
 	log.Info("Running server on ", zap.String("port", config.Options.FlagServerAddress))
 
 	return &App{

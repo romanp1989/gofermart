@@ -33,7 +33,7 @@ func (d *DBStorage) GetNewOrdersToSend() ([]domain.Order, error) {
 	for rows.Next() {
 		var order domain.Order
 
-		err = rows.Scan(&order.UserID, &order.Number)
+		err = rows.Scan(&order.ID, &order.Number, &order.Status, &order.UserID, &order.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -60,9 +60,21 @@ func (d *DBStorage) AddBalance(o *domain.Balance) error {
 }
 
 func (d *DBStorage) UpdateOrder(order *domain.AccrualResponse, userID domain.UserID) error {
-	_, err := d.db.Exec("UPDATE orders SET status = $1 WHERE user_id = $2 AND number = $3", order.Status, order.Order, userID)
+	_, err := d.db.Exec("UPDATE orders SET status = $1 WHERE user_id = $2 AND number = $3", order.Status, userID, order.Order)
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (d *DBStorage) Update(o domain.Order) error {
+	_, err := d.db.Exec(`UPDATE orders 
+								SET status = $1 
+								WHERE id = $2;`, o.Status, o.ID)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
