@@ -13,7 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"io"
 	"net/http"
-	"time"
 )
 
 type Handler struct {
@@ -77,8 +76,7 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	requestReg := new(registrationRequest)
 
-	ctx := r.Context()
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), config.Options.FlagTimeoutContext)
 	defer cancel()
 
 	body, err := io.ReadAll(r.Body)

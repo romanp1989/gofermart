@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/romanp1989/gophermart/internal/balance"
+	"github.com/romanp1989/gophermart/internal/config"
 	"github.com/romanp1989/gophermart/internal/cookies"
 	"github.com/romanp1989/gophermart/internal/domain"
 	"github.com/romanp1989/gophermart/internal/order"
@@ -43,8 +44,7 @@ func NewBalanceHandler(balanceService *balance.Service, logger *zap.Logger) *Han
 }
 
 func (h *Handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), config.Options.FlagTimeoutContext)
 	defer cancel()
 
 	userID, ok := cookies.UIDFromContext(r.Context())
@@ -75,8 +75,7 @@ func (h *Handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), config.Options.FlagTimeoutContext)
 	defer cancel()
 
 	userID, ok := cookies.UIDFromContext(ctx)
@@ -119,8 +118,7 @@ func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetWithdrawHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), config.Options.FlagTimeoutContext)
 	defer cancel()
 
 	userID, ok := cookies.UIDFromContext(ctx)

@@ -22,9 +22,9 @@ type Service struct {
 	log     *zap.Logger
 }
 
-func NewService(orderStore accrualStorage, log *zap.Logger) *Service {
+func NewService(accrualStore accrualStorage, log *zap.Logger) *Service {
 	return &Service{
-		storage: orderStore,
+		storage: accrualStore,
 		log:     log,
 	}
 }
@@ -38,7 +38,7 @@ func (s *Service) OrderStatusChecker() {
 			continue
 		}
 
-		defer func() {
+		defer func() { //@TODO
 			if len(newOrders) > 0 {
 				for _, o := range newOrders {
 					o.Status = domain.OrderStatusNew
@@ -80,14 +80,15 @@ func (s *Service) UploadWithdrawalFromAccrual(orderNumber string) (*domain.Accru
 		host := config.Options.FlagAccrualAddress + "/api/orders/" + orderNumber
 		resp, err = http.Get(host)
 		if err != nil || resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNoContent {
-
-			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
-			}
-
 			time.Sleep(5 * time.Second)
 			continue
 		}
+
+		defer resp.Body.Close()
+
+		//if resp != nil && resp.Body != nil {
+		//	resp.Body.Close()
+		//}
 
 		break
 	}

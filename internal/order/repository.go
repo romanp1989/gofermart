@@ -11,6 +11,27 @@ type DBStorage struct {
 	db *sql.DB
 }
 
+var (
+	insertCreateOrderQuery = `INSERT INTO orders (number, status, user_id, created_at) VALUES ($1, $2, $3, $4) RETURNING id;`
+
+	selectLoadOrderQuery = `SELECT o.id, o.number, o.status, o.user_id, o.created_at 
+							FROM orders o 
+							WHERE o.number = $1;`
+
+	selectLoadOrdersWithBalanceQuery = `SELECT o.id, o.number, o.status, o.user_id, o.created_at, b.sum 
+										FROM orders o 
+										LEFT JOIN balance b on o.number = b.order_number AND b.type = $1 
+										WHERE o.user_id = $2 
+										ORDER BY o.created_at DESC;`
+
+	updateLoadOrdersToProcessQuery = `UPDATE orders o SET status = $1
+									WHERE o.id IN (
+											SELECT id FROM orders
+											WHERE status = $2 ORDER BY id LIMIT 10
+										) AND status = $2
+									returning o.id, o.number, o.status, o.user_id, o.created_at;`
+)
+
 func NewDBStorage(db *sql.DB) *DBStorage {
 	return &DBStorage{
 		db: db,
@@ -22,7 +43,7 @@ func (d *DBStorage) CreateOrder(ctx context.Context, order *domain.Order) (int64
 
 	err := d.db.QueryRowContext(
 		ctx,
-		`INSERT INTO orders (number, status, user_id, created_at) VALUES ($1, $2, $3, $4) RETURNING id;`,
+		insertCreateOrderQuery,
 		order.Number, order.Status, order.UserID, order.CreatedAt,
 	).Scan(&id)
 	if err != nil {
@@ -37,9 +58,8 @@ func (d *DBStorage) LoadOrder(ctx context.Context, orderNumber string) (*domain.
 
 	err := d.db.QueryRowContext(
 		ctx,
-		`SELECT o.id, o.number, o.status, o.user_id, o.created_at 
-				FROM orders o 
-				WHERE o.number = $1;`, orderNumber).
+		selectLoadOrderQuery,
+		orderNumber).
 		Scan(&orderLoaded.ID, &orderLoaded.Number, &orderLoaded.Status, &orderLoaded.UserID, &orderLoaded.CreatedAt)
 
 	if err != nil {
@@ -56,11 +76,7 @@ func (d *DBStorage) LoadOrder(ctx context.Context, orderNumber string) (*domain.
 func (d *DBStorage) LoadOrdersWithBalance(ctx context.Context, userID domain.UserID) ([]domain.OrderWithBalance, error) {
 	rows, err := d.db.QueryContext(
 		ctx,
-		`SELECT o.id, o.number, o.status, o.user_id, o.created_at, b.sum 
-				FROM orders o 
-				LEFT JOIN balance b on o.number = b.order_number AND b.type = $1 
-				WHERE o.user_id = $2 
-				ORDER BY o.created_at DESC;`,
+		selectLoadOrdersWithBalanceQuery,
 		domain.BalanceTypeAdded,
 		userID,
 	)
@@ -99,14 +115,10 @@ func (d *DBStorage) LoadOrdersWithBalance(ctx context.Context, userID domain.Use
 }
 
 func (d *DBStorage) LoadOrdersToProcess(ctx context.Context) ([]domain.Order, error) {
-	q := `UPDATE orders o SET status = $1
-	WHERE o.id IN (
-			SELECT id FROM orders
-			WHERE status = $2 ORDER BY id LIMIT 10
-		) AND status = $2
-	returning o.id, o.number, o.status, o.user_id, o.created_at;`
-
-	rows, err := d.db.QueryContext(ctx, q, domain.OrderStatusProcessing, domain.OrderStatusNew)
+	rows, err := d.db.QueryContext(
+		ctx,
+		updateLoadOrdersToProcessQuery,
+		domain.OrderStatusProcessing, domain.OrderStatusNew)
 
 	if err != nil {
 		return nil, err

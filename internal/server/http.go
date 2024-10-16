@@ -9,30 +9,28 @@ import (
 	"time"
 )
 
-type handlerFunc func(mux *chi.Mux)
-
-type App struct {
-	server   *http.Server
-	log      *zap.Logger
-	handlers []handlerFunc
+type Server struct {
+	server *http.Server
+	log    *zap.Logger
 }
 
-func NewApp(log *zap.Logger, router *chi.Mux) *App {
+func NewServer(router *chi.Mux, log *zap.Logger) *Server {
 	log.Info("Running server on ", zap.String("port", config.Options.FlagServerAddress))
 
-	return &App{
+	return &Server{
 		server: &http.Server{
 			Addr:    config.Options.FlagServerAddress,
 			Handler: router,
 		},
+		log: log,
 	}
 }
 
-func (app *App) RunServer() error {
+func (s *Server) RunServer() error {
 	errChannel := make(chan error, 1)
 
 	go func() {
-		err := app.server.ListenAndServe()
+		err := s.server.ListenAndServe()
 		if err != nil {
 			errChannel <- err
 			return
@@ -44,9 +42,9 @@ func (app *App) RunServer() error {
 	return <-errChannel
 }
 
-func (app *App) Stop() {
+func (s *Server) Stop() {
 	ctx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdown()
 
-	_ = app.server.Shutdown(ctx)
+	_ = s.server.Shutdown(ctx)
 }

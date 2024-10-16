@@ -13,6 +13,24 @@ type DBStorage struct {
 	db *sql.DB
 }
 
+var (
+	selectUserBalanceQuery = `SELECT b.type, b.user_id, SUM(b.sum) 
+							FROM balance b 
+							WHERE b.type IN (%s) AND user_id = $1 GROUP BY b.type, b.user_id;`
+
+	selectWithdrawCurrentBalanceQuery = `SELECT sum(b.sum) - (
+										SELECT sum(b2.sum) FROM balance b2 WHERE b2.user_id = $1 and b2.type = $3
+										) as sum FROM balance b
+										WHERE b.user_id = $1 and b.type = $2;`
+
+	insertWithdrawQuery = `INSERT INTO balance (order_number, sum, type, user_id, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id;`
+
+	selectUserWithdrawals = `SELECT id, created_at, order_number, user_id, sum, type
+							FROM balance b 
+							WHERE b.user_id = $1 AND b.type = $2 
+							ORDER BY b.created_at DESC;`
+)
+
 func NewDBStorage(db *sql.DB) *DBStorage {
 	return &DBStorage{
 		db: db,
@@ -28,17 +46,18 @@ func (d *DBStorage) GetUserBalance(ctx context.Context, userID domain.UserID) ([
 	types := []domain.BalanceType{domain.BalanceTypeAdded, domain.BalanceTypeWithdrawn}
 
 	vals = append(vals, userID)
-	for i, v := range types {
+
+	placeholderNum := 2
+	for _, v := range types {
 		placeholders = append(placeholders, fmt.Sprintf("$%d",
-			i+2,
+			placeholderNum,
 		))
+		placeholderNum++
 
 		vals = append(vals, v)
 	}
 
-	q := fmt.Sprintf(`SELECT b.type, b.user_id, SUM(b.sum) 
-							FROM balance b 
-							WHERE b.type IN (%s) AND user_id = $1 GROUP BY b.type, b.user_id;`, strings.Join(placeholders, ","))
+	q := fmt.Sprintf(selectUserBalanceQuery, strings.Join(placeholders, ","))
 	rows, err := d.db.QueryContext(ctx, q, vals...)
 
 	if err != nil {
@@ -81,12 +100,10 @@ func (d *DBStorage) Withdraw(ctx context.Context, userID *domain.UserID, orderNu
 	}()
 
 	var currentBalance sql.NullFloat64
+
 	err = tx.QueryRowContext(
 		ctx,
-		`SELECT sum(b.sum) - (
-			SELECT sum(b2.sum) FROM balance b2 WHERE b2.user_id = $1 and b2.type = $3
-			) as sum FROM balance b
-		WHERE b.user_id = $1 and b.type = $2;`,
+		selectWithdrawCurrentBalanceQuery,
 		userID, domain.BalanceTypeAdded, domain.BalanceTypeWithdrawn,
 	).Scan(&currentBalance)
 	if err != nil {
@@ -102,7 +119,7 @@ func (d *DBStorage) Withdraw(ctx context.Context, userID *domain.UserID, orderNu
 
 	err = tx.QueryRowContext(
 		ctx,
-		`INSERT INTO balance (order_number, sum, type, user_id, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id;`,
+		insertWithdrawQuery,
 		orderNumber, sum, domain.BalanceTypeWithdrawn, userID, createdAt,
 	).Scan(&id)
 	if err != nil {
@@ -126,10 +143,7 @@ func (d *DBStorage) Withdraw(ctx context.Context, userID *domain.UserID, orderNu
 func (d *DBStorage) GetUserWithdrawals(ctx context.Context, userID domain.UserID) ([]*domain.Balance, error) {
 	rows, err := d.db.QueryContext(
 		ctx,
-		`SELECT id, created_at, order_number, user_id, sum, type
-			FROM balance b 
-			WHERE b.user_id = $1 AND b.type = $2 
-			ORDER BY b.created_at DESC;`,
+		selectUserWithdrawals,
 		userID,
 		domain.BalanceTypeWithdrawn,
 	)
