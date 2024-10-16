@@ -40,11 +40,12 @@ func (d *DBStorage) GetUserBalance(ctx context.Context, userID domain.UserID) ([
 							FROM balance b 
 							WHERE b.type IN (%s) AND user_id = $1 GROUP BY b.type, b.user_id;`, strings.Join(placeholders, ","))
 	rows, err := d.db.QueryContext(ctx, q, vals...)
-	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	if rows.Err() != nil {
 		return nil, rows.Err()
@@ -132,11 +133,12 @@ func (d *DBStorage) GetUserWithdrawals(ctx context.Context, userID domain.UserID
 		userID,
 		domain.BalanceTypeWithdrawn,
 	)
-	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	var userWithdrawals []*domain.Balance
 	for rows.Next() {

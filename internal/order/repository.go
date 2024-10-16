@@ -64,11 +64,12 @@ func (d *DBStorage) LoadOrdersWithBalance(ctx context.Context, userID domain.Use
 		domain.BalanceTypeAdded,
 		userID,
 	)
-	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	if rows.Err() != nil {
 		return nil, rows.Err()
@@ -106,10 +107,12 @@ func (d *DBStorage) LoadOrdersToProcess(ctx context.Context) ([]domain.Order, er
 	returning o.id, o.number, o.status, o.user_id, o.created_at;`
 
 	rows, err := d.db.QueryContext(ctx, q, domain.OrderStatusProcessing, domain.OrderStatusNew)
-	defer rows.Close()
+
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	if rows.Err() != nil {
 		return nil, rows.Err()

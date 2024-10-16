@@ -97,7 +97,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Password: requestReg.Password,
 	}
 
-	userReg, err = h.service.Authorization(r.Context(), userReg)
+	userReg, err = h.service.Authorization(ctx, userReg)
 	if err != nil {
 		h.logger.Sugar().Error(err)
 

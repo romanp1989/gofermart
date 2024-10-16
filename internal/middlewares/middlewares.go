@@ -15,9 +15,6 @@ func New(key string) *Middlewares {
 
 func (m *Middlewares) AuthMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		ctx := r.Context()
-
 		cookie, err := r.Cookie("Token")
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -30,7 +27,7 @@ func (m *Middlewares) AuthMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		ctx = cookies.Context(r.Context(), *userID)
+		ctx := cookies.Context(r.Context(), *userID)
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r.WithContext(ctx))

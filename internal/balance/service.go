@@ -39,10 +39,8 @@ func (s *Service) LoadSum(ctx context.Context, userID domain.UserID) (*domain.Us
 		switch sum.Type {
 		case domain.BalanceTypeAdded:
 			sumRes.Current = sum.Sum
-			break
 		case domain.BalanceTypeWithdrawn:
 			sumRes.Withdrawn = sum.Sum
-			break
 		}
 	}
 

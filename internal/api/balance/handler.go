@@ -53,7 +53,7 @@ func (h *Handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balanceSum, err := h.balanceService.LoadSum(r.Context(), *userID)
+	balanceSum, err := h.balanceService.LoadSum(ctx, *userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -79,7 +79,7 @@ func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	userID, ok := cookies.UIDFromContext(r.Context())
+	userID, ok := cookies.UIDFromContext(ctx)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -98,7 +98,7 @@ func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.balanceService.Withdraw(r.Context(), userID, req.Order, req.Sum)
+	_, err = h.balanceService.Withdraw(ctx, userID, req.Order, req.Sum)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidFormat) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
@@ -123,13 +123,13 @@ func (h *Handler) GetWithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	userID, ok := cookies.UIDFromContext(r.Context())
+	userID, ok := cookies.UIDFromContext(ctx)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	withdrawals, err := h.balanceService.LoadWithdrawals(r.Context(), *userID)
+	withdrawals, err := h.balanceService.LoadWithdrawals(ctx, *userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

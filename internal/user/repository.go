@@ -28,7 +28,7 @@ func (d *DBStorage) CreateUser(ctx context.Context, user domain.User) (*domain.U
 	insertQuery := `INSERT INTO users (login, password) VALUES ($1, $2) RETURNING (id)`
 	err := d.db.QueryRowContext(ctx, insertQuery, user.Login, user.Password).Scan(&id)
 	if err != nil {
-		if errors.As(err, pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			return nil, domain.ErrLoginExists
 		}
 
