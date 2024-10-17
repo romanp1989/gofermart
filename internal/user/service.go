@@ -5,6 +5,8 @@ import (
 	"github.com/romanp1989/gophermart/internal/domain"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"regexp"
+	"unicode"
 )
 
 type userStorage interface {
@@ -52,4 +54,35 @@ func (s *Service) Authorization(ctx context.Context, userReg *domain.User) (*dom
 	}
 
 	return user, nil
+}
+
+func (s *Service) ValidateLogin(login string) bool {
+	r, _ := regexp.Compile("^[0-9A-Za-z]{6,16}$")
+	return r.MatchString(login)
+}
+
+func (s *Service) ValidatePassword(password string) bool {
+	var (
+		hasLenValid = false
+		hasUpper    = false
+		hasLower    = false
+		hasNumber   = false
+	)
+
+	if len(password) > 8 || len(password) < 32 {
+		hasLenValid = true
+	}
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsNumber(char):
+			hasNumber = true
+		}
+	}
+
+	return hasLenValid && hasUpper && hasLower && hasNumber
 }

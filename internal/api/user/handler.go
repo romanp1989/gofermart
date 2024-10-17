@@ -41,8 +41,15 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if requestReg.Login == "" || requestReg.Password == "" {
-		http.Error(w, "неверный формат запроса", http.StatusBadRequest)
+	if !h.service.ValidateLogin(requestReg.Login) {
+		http.Error(w, "неверный формат логина. логин может содержать только буквы латинского алфавита и цифры. длина логина от  до 16 символов", http.StatusBadRequest)
+		return
+	}
+
+	if !h.service.ValidatePassword(requestReg.Password) {
+		http.Error(w, "неверный формат пароля. "+
+			"пароль должен содержать хотя бы 1 букву латинского алфавита в верхнем регистре, 1 букву в нижнем регистре, "+
+			"1 цифру, 1 специальный символ. длина пароля от 8 до 32 символов", http.StatusBadRequest)
 		return
 	}
 
