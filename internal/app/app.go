@@ -71,8 +71,9 @@ func NewApp() (*App, error) {
 
 	accrualRepository := accrualSer.NewDBStorage(db)
 	accrualService := accrualSer.NewService(accrualRepository, zapLogger)
-	//Запускаем горутину для прослушивания Accrual сервиса
-	go accrualService.OrderStatusChecker()
+
+	//Запускаем метод  прослушивания Accrual сервиса
+	accrualService.OrderStatusChecker(config.Options.FlagAccrualDuration)
 
 	return &App{
 		route: route,

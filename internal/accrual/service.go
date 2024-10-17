@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -18,8 +19,10 @@ type accrualStorage interface {
 }
 
 type Service struct {
-	storage accrualStorage
-	log     *zap.Logger
+	storage   accrualStorage
+	log       *zap.Logger
+	waitGroup sync.WaitGroup
+	closeChan chan struct{}
 }
 
 func NewService(accrualStore accrualStorage, log *zap.Logger) *Service {
@@ -29,69 +32,84 @@ func NewService(accrualStore accrualStorage, log *zap.Logger) *Service {
 	}
 }
 
-func (s *Service) OrderStatusChecker() {
+// OrderStatusChecker Обновление бонусов по заказам через сервис Accrual
+func (s *Service) OrderStatusChecker(duration time.Duration) {
+	ticker := time.NewTicker(duration)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				s.waitGroup.Add(1)
 
-	for {
-		newOrders, err := s.storage.GetNewOrdersToSend()
-		if err != nil || len(newOrders) == 0 {
-			time.Sleep(5 * time.Second)
-			continue
+				err := s.doProcess()
+				if err != nil {
+					s.log.Error("ошибка обновления бонусов по заказу", zap.Error(err))
+				}
+				s.waitGroup.Done()
+				ticker.Reset(2 * time.Second)
+			case <-s.closeChan:
+				ticker.Stop()
+				return
+			}
 		}
+	}()
+}
 
-		defer func() { //@TODO
-			if len(newOrders) > 0 {
-				for _, o := range newOrders {
-					o.Status = domain.OrderStatusNew
-					if err = s.storage.Update(o); err != nil {
-						s.log.With(zap.Error(err)).Error("ошибка обновления статуса заказа")
-					}
+// Сохранение баллов лояльности по заказам
+func (s *Service) doProcess() error {
+	newOrders, err := s.storage.GetNewOrdersToSend()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if len(newOrders) > 0 {
+			for _, o := range newOrders {
+				o.Status = domain.OrderStatusNew
+				if err = s.storage.Update(o); err != nil {
+					s.log.With(zap.Error(err)).Error("ошибка обновления статуса заказа")
 				}
 			}
-		}()
+		}
+	}()
 
-		for _, order := range newOrders {
-			accrualResp, err := s.UploadWithdrawalFromAccrual(order.Number)
-			if len(accrualResp.Order) != 0 || err == nil {
-				if err = s.storage.UpdateOrder(accrualResp, order.UserID); err == nil {
-					balance := &domain.Balance{
-						OrderNumber: order.Number,
-						UserID:      order.UserID,
-						Sum:         accrualResp.Accrual,
-						Type:        domain.BalanceTypeAdded,
-						CreatedAt:   time.Now(),
-					}
-					if err = s.storage.AddBalance(balance); err != nil {
-						continue
-					}
+	for i, order := range newOrders {
+		accrualResp, err := s.getWithdrawalFromAccrual(order.Number)
+		if len(accrualResp.Order) != 0 || err == nil {
+			if err = s.storage.UpdateOrder(accrualResp, order.UserID); err == nil {
+				balance := &domain.Balance{
+					OrderNumber: order.Number,
+					UserID:      order.UserID,
+					Sum:         accrualResp.Accrual,
+					Type:        domain.BalanceTypeAdded,
+					CreatedAt:   time.Now(),
 				}
+				if err = s.storage.AddBalance(balance); err != nil {
+					continue
+				}
+				newOrders = append(newOrders[:i], newOrders[i+1:]...)
 			}
 		}
 	}
+
+	return nil
 }
 
-func (s *Service) UploadWithdrawalFromAccrual(orderNumber string) (*domain.AccrualResponse, error) {
+// Получение информации о баллах лояльности из сервиса Accrual
+func (s *Service) getWithdrawalFromAccrual(orderNumber string) (*domain.AccrualResponse, error) {
 	var (
 		accrualResp *domain.AccrualResponse
 		resp        *http.Response
 		err         error
 	)
 
-	for {
-		host := config.Options.FlagAccrualAddress + "/api/orders/" + orderNumber
-		resp, err = http.Get(host)
-		if err != nil || resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNoContent {
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		defer resp.Body.Close()
-
-		//if resp != nil && resp.Body != nil {
-		//	resp.Body.Close()
-		//}
-
-		break
+	host := config.Options.FlagAccrualAddress + "/api/orders/" + orderNumber
+	resp, err = http.Get(host)
+	if err != nil || resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNoContent {
+		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -102,4 +120,9 @@ func (s *Service) UploadWithdrawalFromAccrual(orderNumber string) (*domain.Accru
 		return nil, err
 	}
 	return accrualResp, nil
+}
+
+func (s *Service) Close() {
+	close(s.closeChan)
+	s.waitGroup.Wait()
 }
