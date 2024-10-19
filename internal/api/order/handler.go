@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/romanp1989/gophermart/internal/config"
 	"github.com/romanp1989/gophermart/internal/cookies"
+	"github.com/romanp1989/gophermart/internal/domain"
 	"github.com/romanp1989/gophermart/internal/order"
 	"go.uber.org/zap"
 	"io"
@@ -15,7 +16,7 @@ import (
 )
 
 type Handler struct {
-	service *order.Service
+	service OrderServ
 	logger  *zap.Logger
 }
 
@@ -26,7 +27,12 @@ type orderListResponse struct {
 	UploadedAt string  `json:"uploaded_at"`
 }
 
-func NewOrderHandler(orderService *order.Service, logger *zap.Logger) *Handler {
+type OrderServ interface {
+	CreateOrder(ctx context.Context, orderNumber string, userID domain.UserID) (*domain.Order, error)
+	GetUserOrders(ctx context.Context, userID domain.UserID) ([]domain.OrderWithBalance, error)
+}
+
+func NewOrderHandler(orderService OrderServ, logger *zap.Logger) *Handler {
 	return &Handler{
 		service: orderService,
 		logger:  logger,

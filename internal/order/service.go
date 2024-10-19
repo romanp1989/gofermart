@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type orderStorage interface {
+type OrderStorage interface {
 	LoadOrder(ctx context.Context, orderNumber string) (*domain.Order, error)
 	CreateOrder(ctx context.Context, order *domain.Order) (int64, error)
 	LoadOrdersWithBalance(ctx context.Context, userID domain.UserID) ([]domain.OrderWithBalance, error)
@@ -17,12 +17,16 @@ type orderStorage interface {
 }
 
 type Service struct {
-	storage   orderStorage
-	validator *Validator
+	storage   OrderStorage
+	validator ValidatorInterface
 	log       *zap.Logger
 }
 
-func NewService(orderStore orderStorage, validator *Validator, log *zap.Logger) *Service {
+type ValidatorInterface interface {
+	Validate(ctx context.Context, number string, userID domain.UserID) ValidateError
+}
+
+func NewService(orderStore OrderStorage, validator ValidatorInterface, log *zap.Logger) *Service {
 	return &Service{
 		storage:   orderStore,
 		validator: validator,

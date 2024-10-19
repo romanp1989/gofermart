@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/romanp1989/gophermart/internal/balance"
 	"github.com/romanp1989/gophermart/internal/config"
 	"github.com/romanp1989/gophermart/internal/cookies"
 	"github.com/romanp1989/gophermart/internal/domain"
@@ -16,7 +15,7 @@ import (
 )
 
 type Handler struct {
-	balanceService *balance.Service
+	balanceService BalanceServ
 	logger         *zap.Logger
 }
 
@@ -36,7 +35,13 @@ type balanceListResponse struct {
 	ProcessedAt string  `json:"processed_at"`
 }
 
-func NewBalanceHandler(balanceService *balance.Service, logger *zap.Logger) *Handler {
+type BalanceServ interface {
+	LoadSum(ctx context.Context, userID domain.UserID) (*domain.UserSum, error)
+	Withdraw(ctx context.Context, userID *domain.UserID, orderNumber string, sum float64) (*domain.Balance, error)
+	LoadWithdrawals(ctx context.Context, userID domain.UserID) ([]*domain.Balance, error)
+}
+
+func NewBalanceHandler(balanceService BalanceServ, logger *zap.Logger) *Handler {
 	return &Handler{
 		balanceService: balanceService,
 		logger:         logger,

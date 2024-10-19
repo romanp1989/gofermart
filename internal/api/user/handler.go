@@ -8,7 +8,6 @@ import (
 	"github.com/romanp1989/gophermart/internal/config"
 	"github.com/romanp1989/gophermart/internal/cookies"
 	"github.com/romanp1989/gophermart/internal/domain"
-	"github.com/romanp1989/gophermart/internal/user"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"io"
@@ -16,11 +15,18 @@ import (
 )
 
 type Handler struct {
-	service *user.Service
+	service UserServ
 	logger  *zap.Logger
 }
 
-func NewUserHandler(userService *user.Service, logger *zap.Logger) *Handler {
+type UserServ interface {
+	CreateUser(ctx context.Context, userReg domain.User) (*domain.User, error)
+	Authorization(ctx context.Context, userReg *domain.User) (*domain.User, error)
+	ValidateLogin(login string) bool
+	ValidatePassword(password string) bool
+}
+
+func NewUserHandler(userService UserServ, logger *zap.Logger) *Handler {
 	return &Handler{
 		service: userService,
 		logger:  logger,

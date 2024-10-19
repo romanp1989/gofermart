@@ -16,11 +16,11 @@ type balanceStorage interface {
 
 type Service struct {
 	storage   balanceStorage
-	validator *order.Validator
+	validator order.ValidatorInterface
 	log       *zap.Logger
 }
 
-func NewService(balanceStore balanceStorage, validator *order.Validator, log *zap.Logger) *Service {
+func NewService(balanceStore balanceStorage, validator order.ValidatorInterface, log *zap.Logger) *Service {
 	return &Service{
 		storage:   balanceStore,
 		validator: validator,

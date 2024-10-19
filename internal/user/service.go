@@ -9,17 +9,17 @@ import (
 	"unicode"
 )
 
-type userStorage interface {
+type UserStorage interface {
 	CreateUser(ctx context.Context, user domain.User) (*domain.User, error)
 	FindByLogin(ctx context.Context, login string) (*domain.User, error)
 }
 
 type Service struct {
-	storage userStorage
+	storage UserStorage
 	log     *zap.Logger
 }
 
-func NewService(userStore userStorage, log *zap.Logger) *Service {
+func NewService(userStore UserStorage, log *zap.Logger) *Service {
 	return &Service{
 		storage: userStore,
 		log:     log,

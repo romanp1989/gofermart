@@ -16,10 +16,10 @@ var (
 )
 
 type Validator struct {
-	orderStorage orderStorage
+	orderStorage OrderStorage
 }
 
-func NewValidator(storage orderStorage) *Validator {
+func NewValidator(storage OrderStorage) *Validator {
 	return &Validator{orderStorage: storage}
 }
 
